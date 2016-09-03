@@ -2,19 +2,21 @@
 use strict;
 use warnings;
 
-our $VERSION = '0.003';
+our $VERSION = '0.004';
 
 =head1 NAME
 
-matchDateTime -- matches date/time info in movie files.
+matchDateTime -- matches date/time info in movie files where ExifTool
+is unable to.
 
 =head1 VERSION
 
-version 0.003
+version 0.004
 
 =head1 DESCRIPTION
 
-C<matchDateTime> updates the date/time info in (movie) files.
+C<matchDateTime> updates the date/time info in (movie) files where
+ExifTool is unable to.
 
 For "normal" movie files the maker note DateTimeOriginal dates (and
 any other matching dates) are updated with the date as set in the
@@ -60,6 +62,20 @@ timezone information (only used when the C<-tz> option is also
 specified).
 
 =back
+
+=head1 PREREQUISITES
+
+matchDateTime requires both L<Perl|https://www.perl.org/> and
+L<ExifTool|http://www.sno.phy.queensu.ca/~phil/exiftool/> to be
+installed.
+
+=head1 INSTALLATION
+
+No installation is required, the script can be called
+directly. Optionally you can put the script in a directory on your
+path so it can be run from anywhere. On windows you may need to give
+the file an extension that is recognized as perl command (e.g.,
+`.PL`).
 
 =head1 AUTHOR
 
