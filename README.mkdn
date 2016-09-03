@@ -1,14 +1,16 @@
 # NAME
 
-matchDateTime -- matches date/time info in movie files.
+matchDateTime -- matches date/time info in movie files where ExifTool
+is unable to.
 
 # VERSION
 
-version 0.003
+version 0.004
 
 # DESCRIPTION
 
-`matchDateTime` updates the date/time info in (movie) files.
+`matchDateTime` updates the date/time info in (movie) files where
+ExifTool is unable to.
 
 For "normal" movie files the maker note DateTimeOriginal dates (and
 any other matching dates) are updated with the date as set in the
@@ -50,6 +52,20 @@ timzezone (and optional daylight savings flag).
     Indicates the daylight savings flag should be set when writing the new
     timezone information (only used when the `-tz` option is also
     specified).
+
+# PREREQUISITES
+
+matchDateTime requires both [Perl](https://www.perl.org/) and
+[ExifTool](http://www.sno.phy.queensu.ca/~phil/exiftool/) to be
+installed.
+
+# INSTALLATION
+
+No installation is required, the script can be called
+directly. Optionally you can put the script in a directory on your
+path so it can be run from anywhere. On windows you may need to give
+the file an extension that is recognized as perl command (e.g.,
+\`.PL\`).
 
 # AUTHOR
 
