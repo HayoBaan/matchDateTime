@@ -1,0 +1,293 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+our $VERSION = '0.003';
+
+=head1 NAME
+
+matchDateTime -- matches date/time info in movie files.
+
+=head1 VERSION
+
+version 0.003
+
+=head1 DESCRIPTION
+
+C<matchDateTime> updates the date/time info in (movie) files.
+
+For "normal" movie files the maker note DateTimeOriginal dates (and
+any other matching dates) are updated with the date as set in the
+QuickTime CreateDate. It does this by simply replacing any string that
+exactly matches the DateTimeOriginal in the MakerNotes with the
+QuickTime CreateDate string. As extra precaution against false
+matches, the match is prefixed with the binary length marker and
+postfixed with the zero byte marker.
+
+MTS and M2TS files are handled specially, in that here we take the
+file modify date as the new target date and update all occurrences of
+the DateTimeOriginal with this. All sequential timestamps are updated
+as well. By default, the timezone information is left as was recorded
+by the camera, but you can change this by specifying a different
+timzezone (and optional daylight savings flag).
+
+=head1 SYNOPSIS
+
+  matchDateTime [-recurse] [-overwrite] [-tz TZ [-dst]] <Files>
+
+=head1 OPTIONS
+
+=over 4
+
+=item -recurse
+
+Recurse directories. This will have matchDateTime process B<all> files
+in those directories, so use with care!
+
+=item -overwrite
+
+Overwrites the original (video) file instead of creating a new file with
+C<_matchDateTime> added to the name.
+
+=item -tz I<TZ>
+
+Use I<TZ> as the new time zone. Specify the time zone in hours.
+
+=item -dst
+
+Indicates the daylight savings flag should be set when writing the new
+timezone information (only used when the C<-tz> option is also
+specified).
+
+=back
+
+=head1 AUTHOR
+
+Hayo Baan <info@hayobaan.com>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2016 by Hayo Baan.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut
+
+use Getopt::Long;
+use Pod::Usage;
+
+# Options
+my ($help, $recurse, $overwrite, $tz, $dst);
+GetOptions(
+    'help|?'    => \$help,
+    'recurse'   => \$recurse,
+    'overwrite' => \$overwrite,
+    'tz=i'      => \$tz,
+    'dst'       => \$dst,
+) or pod2usage(-exitstatus => 1, -verbose => 0);
+pod2usage(-exitstatus => 0, -verbose => 2) if $help;
+pod2usage(-exitstatus => 1, -verbose => 0) unless @ARGV;
+
+# Read file into given buffer (reference)
+sub readFile {
+    my $file = shift;
+    my $buffer = shift;
+
+    open(my $fh, '<:raw' ,$file) or die "Can't open $file: $!\n";
+    my $filesize = -s $file;
+    read($fh, $$buffer, $filesize) == $filesize or die "Unable to read all data in $file: $!\n";
+    close($fh);
+
+    return;
+}
+
+# Write given buffer (reference) to file
+sub writeFile {
+    my $file = shift;
+    my $buffer = shift;
+    my $orgModifyDate = shift;
+
+    $file =~ s/(\.[^.]*)$/_matchDateTime$1/ if (!$overwrite);
+
+    open(my $fh, '>:raw' ,$file) or die "Can't open $file: $!\n";
+    (print $fh $$buffer) or die "Unable to write all data to $file: $!\n";
+    close($fh);
+
+    # Restore file modify date
+    my $res = qx(exiftool -File:System:FileModifyDate="$orgModifyDate" "$file");
+
+    return;
+}
+
+sub addSecond {
+    my $dateTime = shift;
+
+    my ($year, $month, $day, $hour, $minute, $second) = $dateTime =~ /(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/;
+
+    $second++;
+    if ($second >= 60) {
+        $second = 0;
+        $minute++;
+    }
+    if ($minute >= 60) {
+        $minute = 0;
+        $hour++;
+    }
+    if ($hour >=24) {
+        $hour = 0;
+        $day++;
+        printf "WARNING: Day added, might be an illegal date!!!";
+    }
+
+    return sprintf("%04d:%02d:%02d %02d:%02d:%02d", $year, $month, $day, $hour, $minute, $second);
+}
+
+
+sub fromH264Tz {
+    my $h264Tz = ord(shift);
+
+    my $dst = $h264Tz & 0x40;
+    my $tz = ($h264Tz & 0x20 ? -1 : 1) * (($h264Tz >> 1) & 0x0f);
+
+    return ($tz, $dst);
+}
+
+sub toH264Tz {
+    my $tz = shift;
+    my $dst = shift;
+
+    my $neg = $tz<0;
+    $tz = abs($tz);
+
+    return chr((abs($tz) << 1) | ($dst ? 0x40 : 0) | ($neg ? 0x20 : 0));
+}
+
+sub toH264Char {
+    my $val = shift;
+    my $asRegex = shift;
+    my $h264 = chr(16*(int $val / 10) + ($val % 10));
+
+    return $asRegex ? quotemeta($h264) : $h264;
+}
+
+sub toH264DateTime {
+    my $dateTime = shift;
+    my $tz = shift;
+    my $dst = shift;
+    my $asRegex = shift;
+
+    my $h264 = toH264Char(18, $asRegex);
+    $h264 .= defined $tz ? ($asRegex ? quotemeta(toH264Tz($tz, $dst)) : toH264Tz($tz, $dst)) : '(.)';
+    $dateTime =~ /(\d{2})(\d{2}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/;
+    $h264 .= toH264Char($1, $asRegex);
+    $h264 .= toH264Char($2, $asRegex);
+    $h264 .= toH264Char($3, $asRegex);
+    $h264 .= toH264Char(19, $asRegex);
+    $h264 .= toH264Char($4, $asRegex);
+    $h264 .= toH264Char($5, $asRegex);
+    $h264 .= toH264Char($6, $asRegex);
+    $h264 .= toH264Char($7, $asRegex);
+
+    return $h264;
+}
+
+sub processMts {
+    my $file = shift;
+
+    # Get datetime information from exiftool
+    my $datetimeInfo = qx(exiftool --a -s -File:System:FileModifyDate -H264:DateTimeOriginal "$file");
+    my ($modifyDate, $modifyDateTZ) = $datetimeInfo =~ /FileModifyDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})(.*)/;
+    print("Skipped: Unable to find FileModifyDate in $file\n"), return if !defined $modifyDate;
+    my ($dateTimeOriginal) = $datetimeInfo =~ /DateTimeOriginal\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})/;
+    print("Skipped: Unable to find H264 DateTimeOriginal in $file\n"), return if !defined $dateTimeOriginal;
+    print("Skipped: Dates already the same in $file\n"), return if $modifyDate eq $dateTimeOriginal;
+
+    my $data;
+    readFile($file, \$data);
+
+    # Get original timezone / dst
+    my $from = toH264DateTime($dateTimeOriginal, undef, undef, 1);
+    my ($orgTzInfo) = $data =~ /$from/;
+    my ($orgTz, $orgDst) = fromH264Tz($orgTzInfo);
+    if (!defined $tz) {
+        $tz = $orgTz;
+        $dst = $orgDst;
+    }
+    $from = toH264DateTime($dateTimeOriginal, $orgTz, $orgDst, 1);
+    my $to = toH264DateTime($modifyDate, $tz, $dst, 0);
+
+    # Now change all datetimes found, increasing time by one second until no more matches
+    my $totalNr = 0;
+    while (my $nr = $data =~ s/$from/$to/g) {
+        printf "Updated $dateTimeOriginal %+03d:00%s => $modifyDate %+03d:00%s in $file ($nr times)\n", $orgTz, $orgDst ? " DST" : "", $tz, $dst ? " DST" : "";
+        $totalNr += $nr;
+        $dateTimeOriginal = addSecond($dateTimeOriginal);
+        $modifyDate = addSecond($modifyDate);
+        $from = toH264DateTime($dateTimeOriginal, $orgTz, $orgDst, 1);
+        $to = toH264DateTime($modifyDate, $tz, $dst, 0);
+    }
+
+    if ($totalNr) {
+        writeFile($file, \$data, "$modifyDate$modifyDateTZ");
+        print "OK: Changed date $totalNr times in $file\n";
+    } else {
+        print "WARNING: No changes made to $file\n";
+    }
+
+    return $totalNr;
+}
+
+sub processNormal {
+    my $file = shift;
+
+    # Get datetime information from exiftool
+    my $datetimeInfo = qx(exiftool --a -s -File:System:FileModifyDate -QuickTime:CreateDate -MakerNotes:DateTimeOriginal "$file");
+    my ($modifyDate, $modifyDateTZ) = $datetimeInfo =~ /FileModifyDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})(.*)/;
+    print("Skipped: Unable to find FileModifyDate in $file\n"), return if !defined $modifyDate;
+    my ($createDate) = $datetimeInfo =~ /CreateDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})/;
+    print("Skipped: Unable to find QuickTime CreateDate in $file\n"), return if !defined $createDate;
+    my ($dateTimeOriginal) = $datetimeInfo =~ /DateTimeOriginal\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})/;
+    print("Skipped: Unable to find MakerNotes DateTimeOriginal in $file\n"), return if !defined $dateTimeOriginal;
+    print("Skipped: Dates already the same in $file\n"), return if $createDate eq $dateTimeOriginal;
+
+    # Add length and zero string markers around date strings for extra matching security
+    my $from = chr(20) . $dateTimeOriginal . chr(0);
+    my $to = chr(20) . $createDate . chr(0);
+
+    # Read file
+    my $data;
+    readFile($file, \$data);
+
+    # Change all dateTimeOriginal dates to match createDate
+    my $nr = $data =~ s/$from/$to/g;
+
+    # Write updated file (if changes were made)
+    if ($nr) {
+        writeFile($file, \$data, "$modifyDate$modifyDateTZ");
+        print "OK: Changed date $nr times in $file\n";
+    } else {
+        print "WARNING: No changes made to $file\n";
+    }
+
+    return $nr;
+}
+
+my @ORG_ARGV = @ARGV; # So we can check if dir was provided on command-line
+while (@ARGV) {
+    my $file = shift;
+
+    if (-f $file) {
+        if ($file =~ /\.(?:mts|m2ts)$/i) {
+            processMts($file)
+        } else {
+            processNormal($file);
+        }
+    } elsif (-d $file && ($recurse || grep { $file eq $_ } @ORG_ARGV)) { # Always process dirs given on command-line
+        $file =~ s/^(.+)\/$/$1/; # Strip trailing /
+         # Process directories recursively
+         unshift(@ARGV, glob(qq{"$file/*"}));
+    } else {
+        warn((-e $file ? "Ignored file" : "File does not exist") . ": $file\n");
+    }
+}

@@ -1,0 +1,63 @@
+# NAME
+
+matchDateTime -- matches date/time info in movie files.
+
+# VERSION
+
+version 0.003
+
+# DESCRIPTION
+
+`matchDateTime` updates the date/time info in (movie) files.
+
+For "normal" movie files the maker note DateTimeOriginal dates (and
+any other matching dates) are updated with the date as set in the
+QuickTime CreateDate. It does this by simply replacing any string that
+exactly matches the DateTimeOriginal in the MakerNotes with the
+QuickTime CreateDate string. As extra precaution against false
+matches, the match is prefixed with the binary length marker and
+postfixed with the zero byte marker.
+
+MTS and M2TS files are handled specially, in that here we take the
+file modify date as the new target date and update all occurrences of
+the DateTimeOriginal with this. All sequential timestamps are updated
+as well. By default, the timezone information is left as was recorded
+by the camera, but you can change this by specifying a different
+timzezone (and optional daylight savings flag).
+
+# SYNOPSIS
+
+    matchDateTime [-recurse] [-overwrite] [-tz TZ [-dst]] <Files>
+
+# OPTIONS
+
+- -recurse
+
+    Recurse directories. This will have matchDateTime process **all** files
+    in those directories, so use with care!
+
+- -overwrite
+
+    Overwrites the original (video) file instead of creating a new file with
+    `_matchDateTime` added to the name.
+
+- -tz _TZ_
+
+    Use _TZ_ as the new time zone. Specify the time zone in hours.
+
+- -dst
+
+    Indicates the daylight savings flag should be set when writing the new
+    timezone information (only used when the `-tz` option is also
+    specified).
+
+# AUTHOR
+
+Hayo Baan <info@hayobaan.com>
+
+# COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2016 by Hayo Baan.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
