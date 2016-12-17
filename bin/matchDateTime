@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-our $VERSION = '0.006';
+our $VERSION = '0.007';
 
 =head1 NAME
 
@@ -11,7 +11,7 @@ is unable to.
 
 =head1 VERSION
 
-version 0.006
+version 0.007
 
 =head1 DESCRIPTION
 
@@ -40,7 +40,7 @@ MTS/M2TS files).
 
 =head1 SYNOPSIS
 
-  matchDateTime [-recurse] [-overwrite] [-tz TZ [-dst]] <Files>
+  matchDateTime [-recurse] [-overwrite] [utc] [-tz TZ [-dst]] <Files>
 
 =head1 OPTIONS
 
@@ -54,6 +54,19 @@ in those directories, so use with care!
 =item -overwrite
 
 Overwrites the original file instead of renaming it to C<_original>.
+
+=item -utc
+
+Indicates that QuickTime times are in UTC. This will convert the
+QuickTime time back to the local time, so any updates to the maker
+notes DateTimeOriginal and the CreationDate will also be in this time.
+
+With this option, if the file was recorded in a different timezone
+from your local, you should (temporarily) set the timezone to the
+timezone at the location of the recording. In Unix or on a Mac, this
+can be done by setting the TZ variable for the duration of the
+C<matchDateTime> command like so: C<TZ="America/New_York"
+matchDateTime -utc FILE>.
 
 =item -tz I<TZ>
 
@@ -98,11 +111,12 @@ use Getopt::Long;
 use Pod::Usage;
 
 # Options
-my ($help, $recurse, $overwrite, $tz, $dst);
+my ($help, $recurse, $overwrite, $utc, $tz, $dst);
 GetOptions(
     'help|?'    => \$help,
     'recurse'   => \$recurse,
     'overwrite' => \$overwrite,
+    'utc'       => \$utc,
     'tz=i'      => \$tz,
     'dst'       => \$dst,
 ) or pod2usage(-exitstatus => 1, -verbose => 0);
@@ -265,7 +279,8 @@ sub processNormal {
     my $file = shift;
 
     # Get datetime information from exiftool
-    my $datetimeInfo = qx(exiftool --a -s -File:System:FileModifyDate -QuickTime:CreateDate -MakerNotes:DateTimeOriginal -QuickTime:CreationDate "$file");
+    $utc = $utc ? "-api QuickTimeUTC" : "";
+    my $datetimeInfo = qx(exiftool --a -s $utc -File:System:FileModifyDate -QuickTime:CreateDate -MakerNotes:DateTimeOriginal -QuickTime:CreationDate "$file");
     my ($modifyDate, $modifyDateTZ) = $datetimeInfo =~ /FileModifyDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})(.*)/;
     print("Skipped: Unable to find FileModifyDate in $file\n"), return if !defined $modifyDate;
     my ($createDate) = $datetimeInfo =~ /CreateDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})/;
@@ -280,34 +295,41 @@ sub processNormal {
     readFile($file, \$data);
 
     my ($from, $to);
-    my $nr = 0;
+    my $changed = 0;
 
     # Change all dateTimeOriginal dates to match createDate
     if (defined $dateTimeOriginal) {
         $from = chr(20) . $dateTimeOriginal . chr(0);
         $to = chr(20) . $createDate . chr(0);
-        $nr += $data =~ s/\Q$from\E/$to/g if ($from ne $to);
+        my $nr = $data =~ s/\Q$from\E/$to/g if ($from ne $to);
+        $changed += $nr;
+        print "Updated DateTimeOriginal $dateTimeOriginal => $createDate in $file ($nr times)\n";
     }
 
     # Change all CreationDate dates to match createDate
     if (defined $creationDate) {
         $from = $creationDate;
         $from =~ s/(\d{4}):(\d{2}):(\d{2}) (\d{2}:\d{2}:\d{2})([+-]\d{2}):(\d{2})/$1-$2-$3T$4$5$6/;
-        $tz = defined $tz ? sprintf("%+03d00", $tz) : "$5$6";
-        $to = "$createDate$tz";
+        my $totz = defined $tz ? sprintf("%+03d00", $tz) : "$5$6";
+        if ($utc && !defined $tz && $datetimeInfo =~ /CreateDate\s*:\s*\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}([+-]\d{2}):(\d{2})/) {
+            $totz = "$1$2";
+        }
+        $to = "$createDate$totz";
         $to =~ s/(\d{4}):(\d{2}):(\d{2}) (\d{2}:\d{2}:\d{2})([+-]\d{2}\d{2})/$1-$2-$3T$4$5/;
-        $nr += $data =~ s/\Q$from\E/$to/g if ($from ne $to);
+        my $nr = $data =~ s/\Q$from\E/$to/g if ($from ne $to);
+        $changed += $nr;
+        print "Updated CreationDate $from => $to in $file ($nr times)\n";
     }
 
     # Write updated file (if changes were made)
-    if ($nr) {
+    if ($changed) {
         writeFile($file, \$data, "$modifyDate$modifyDateTZ");
-        print "OK: Changed date $nr times in $file\n";
+        print "OK: Changed date $changed times in $file\n";
     } else {
         print "WARNING: No changes made to $file\n";
     }
 
-    return $nr;
+    return $changed;
 }
 
 my @ORG_ARGV = @ARGV; # So we can check if dir was provided on command-line

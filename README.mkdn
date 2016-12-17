@@ -5,7 +5,7 @@ is unable to.
 
 # VERSION
 
-version 0.006
+version 0.007
 
 # DESCRIPTION
 
@@ -34,7 +34,7 @@ MTS/M2TS files).
 
 # SYNOPSIS
 
-    matchDateTime [-recurse] [-overwrite] [-tz TZ [-dst]] <Files>
+    matchDateTime [-recurse] [-overwrite] [utc] [-tz TZ [-dst]] <Files>
 
 # OPTIONS
 
@@ -46,6 +46,19 @@ MTS/M2TS files).
 - -overwrite
 
     Overwrites the original file instead of renaming it to `_original`.
+
+- -utc
+
+    Indicates that QuickTime times are in UTC. This will convert the
+    QuickTime time back to the local time, so any updates to the maker
+    notes DateTimeOriginal and the CreationDate will also be in this time.
+
+    With this option, if the file was recorded in a different timezone
+    from your local, you should (temporarily) set the timezone to the
+    timezone at the location of the recording. In Unix or on a Mac, this
+    can be done by setting the TZ variable for the duration of the
+    `matchDateTime` command like so: `TZ="America/New_York"
+    matchDateTime -utc FILE`.
 
 - -tz _TZ_
 
