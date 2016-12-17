@@ -5,7 +5,7 @@ is unable to.
 
 # VERSION
 
-version 0.005
+version 0.006
 
 # DESCRIPTION
 
@@ -45,8 +45,7 @@ MTS/M2TS files).
 
 - -overwrite
 
-    Overwrites the original (video) file instead of creating a new file with
-    `_matchDateTime` added to the name.
+    Overwrites the original file instead of renaming it to `_original`.
 
 - -tz _TZ_
 

@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-our $VERSION = '0.005';
+our $VERSION = '0.006';
 
 =head1 NAME
 
@@ -11,7 +11,7 @@ is unable to.
 
 =head1 VERSION
 
-version 0.005
+version 0.006
 
 =head1 DESCRIPTION
 
@@ -53,8 +53,7 @@ in those directories, so use with care!
 
 =item -overwrite
 
-Overwrites the original (video) file instead of creating a new file with
-C<_matchDateTime> added to the name.
+Overwrites the original file instead of renaming it to C<_original>.
 
 =item -tz I<TZ>
 
@@ -129,7 +128,10 @@ sub writeFile {
     my $buffer = shift;
     my $orgModifyDate = shift;
 
-    $file =~ s/(\.[^.]*)$/_matchDateTime$1/ if (!$overwrite);
+    my $org = $file . "_original";
+    if (!$overwrite && !-e $org) {
+        rename($file, $org) or die "Unable to create _original file: $!\n";
+    }
 
     open(my $fh, '>:raw' ,$file) or die "Can't open $file: $!\n";
     (print $fh $$buffer) or die "Unable to write all data to $file: $!\n";
