@@ -5,27 +5,32 @@ is unable to.
 
 # VERSION
 
-version 0.004
+version 0.005
 
 # DESCRIPTION
 
 `matchDateTime` updates the date/time info in (movie) files where
 ExifTool is unable to.
 
-For "normal" movie files the maker note DateTimeOriginal dates (and
-any other matching dates) are updated with the date as set in the
-QuickTime CreateDate. It does this by simply replacing any string that
-exactly matches the DateTimeOriginal in the MakerNotes with the
-QuickTime CreateDate string. As extra precaution against false
-matches, the match is prefixed with the binary length marker and
-postfixed with the zero byte marker.
+For "normal" movie files the maker note DateTimeOriginal and QuickTime
+CreationDate dates (and any other matching dates) are updated with the
+date as set in the QuickTime CreateDate.
 
-MTS and M2TS files are handled specially, in that here we take the
-file modify date as the new target date and update all occurrences of
-the DateTimeOriginal with this. All sequential timestamps are updated
-as well. By default, the timezone information is left as was recorded
-by the camera, but you can change this by specifying a different
-timzezone (and optional daylight savings flag).
+MTS and M2TS movie files are handled specially, in that here we take
+the file modification date as the new target date and update all
+occurrences of the DateTimeOriginal with this. All sequential
+timestamps are updated as well.
+
+By default, the timezone information is left as was recorded by the
+camera, but you can change this by specifying a different timzezone
+(and, for MTS and M2TS files, a different daylight savings flag).
+
+The tool works by replacing any sequence of bytes that exactly match
+the original value by the (correctly formatted) QuickTime
+CreateDate. Note that with this approach it is possible that actual
+movie data is changed as well. This, however, is extremely unlikely:
+the chance of this occuring is less than 1/256^20 (1/256^10 for
+MTS/M2TS files).
 
 # SYNOPSIS
 

@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-our $VERSION = '0.004';
+our $VERSION = '0.005';
 
 =head1 NAME
 
@@ -11,27 +11,32 @@ is unable to.
 
 =head1 VERSION
 
-version 0.004
+version 0.005
 
 =head1 DESCRIPTION
 
 C<matchDateTime> updates the date/time info in (movie) files where
 ExifTool is unable to.
 
-For "normal" movie files the maker note DateTimeOriginal dates (and
-any other matching dates) are updated with the date as set in the
-QuickTime CreateDate. It does this by simply replacing any string that
-exactly matches the DateTimeOriginal in the MakerNotes with the
-QuickTime CreateDate string. As extra precaution against false
-matches, the match is prefixed with the binary length marker and
-postfixed with the zero byte marker.
+For "normal" movie files the maker note DateTimeOriginal and QuickTime
+CreationDate dates (and any other matching dates) are updated with the
+date as set in the QuickTime CreateDate.
 
-MTS and M2TS files are handled specially, in that here we take the
-file modify date as the new target date and update all occurrences of
-the DateTimeOriginal with this. All sequential timestamps are updated
-as well. By default, the timezone information is left as was recorded
-by the camera, but you can change this by specifying a different
-timzezone (and optional daylight savings flag).
+MTS and M2TS movie files are handled specially, in that here we take
+the file modification date as the new target date and update all
+occurrences of the DateTimeOriginal with this. All sequential
+timestamps are updated as well.
+
+By default, the timezone information is left as was recorded by the
+camera, but you can change this by specifying a different timzezone
+(and, for MTS and M2TS files, a different daylight savings flag).
+
+The tool works by replacing any sequence of bytes that exactly match
+the original value by the (correctly formatted) QuickTime
+CreateDate. Note that with this approach it is possible that actual
+movie data is changed as well. This, however, is extremely unlikely:
+the chance of this occuring is less than 1/256^20 (1/256^10 for
+MTS/M2TS files).
 
 =head1 SYNOPSIS
 
@@ -258,25 +263,39 @@ sub processNormal {
     my $file = shift;
 
     # Get datetime information from exiftool
-    my $datetimeInfo = qx(exiftool --a -s -File:System:FileModifyDate -QuickTime:CreateDate -MakerNotes:DateTimeOriginal "$file");
+    my $datetimeInfo = qx(exiftool --a -s -File:System:FileModifyDate -QuickTime:CreateDate -MakerNotes:DateTimeOriginal -QuickTime:CreationDate "$file");
     my ($modifyDate, $modifyDateTZ) = $datetimeInfo =~ /FileModifyDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})(.*)/;
     print("Skipped: Unable to find FileModifyDate in $file\n"), return if !defined $modifyDate;
     my ($createDate) = $datetimeInfo =~ /CreateDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})/;
     print("Skipped: Unable to find QuickTime CreateDate in $file\n"), return if !defined $createDate;
     my ($dateTimeOriginal) = $datetimeInfo =~ /DateTimeOriginal\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})/;
-    print("Skipped: Unable to find MakerNotes DateTimeOriginal in $file\n"), return if !defined $dateTimeOriginal;
-    print("Skipped: Dates already the same in $file\n"), return if $createDate eq $dateTimeOriginal;
+    my ($creationDate) = $datetimeInfo =~ /CreationDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2})/;
 
-    # Add length and zero string markers around date strings for extra matching security
-    my $from = chr(20) . $dateTimeOriginal . chr(0);
-    my $to = chr(20) . $createDate . chr(0);
+    print("Skipped: Unable to find MakerNotes DateTimeOriginal or Creation Date in $file\n"), return if (!defined $dateTimeOriginal && !defined $creationDate);
 
     # Read file
     my $data;
     readFile($file, \$data);
 
+    my ($from, $to);
+    my $nr = 0;
+
     # Change all dateTimeOriginal dates to match createDate
-    my $nr = $data =~ s/$from/$to/g;
+    if (defined $dateTimeOriginal) {
+        $from = chr(20) . $dateTimeOriginal . chr(0);
+        $to = chr(20) . $createDate . chr(0);
+        $nr += $data =~ s/\Q$from\E/$to/g if ($from ne $to);
+    }
+
+    # Change all CreationDate dates to match createDate
+    if (defined $creationDate) {
+        $from = $creationDate;
+        $from =~ s/(\d{4}):(\d{2}):(\d{2}) (\d{2}:\d{2}:\d{2})([+-]\d{2}):(\d{2})/$1-$2-$3T$4$5$6/;
+        $tz = defined $tz ? sprintf("%+03d00", $tz) : "$5$6";
+        $to = "$createDate$tz";
+        $to =~ s/(\d{4}):(\d{2}):(\d{2}) (\d{2}:\d{2}:\d{2})([+-]\d{2}\d{2})/$1-$2-$3T$4$5/;
+        $nr += $data =~ s/\Q$from\E/$to/g if ($from ne $to);
+    }
 
     # Write updated file (if changes were made)
     if ($nr) {
