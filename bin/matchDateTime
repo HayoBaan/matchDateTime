@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-our $VERSION = '0.007';
+our $VERSION = '0.008';
 
 =head1 NAME
 
@@ -11,7 +11,7 @@ is unable to.
 
 =head1 VERSION
 
-version 0.007
+version 0.008
 
 =head1 DESCRIPTION
 
@@ -27,6 +27,14 @@ the file modification date as the new target date and update all
 occurrences of the DateTimeOriginal with this. All sequential
 timestamps are updated as well.
 
+Important: No other date/time tags than as described will get
+updated. So if you want any other tags to change as well, you will
+need to additionally use C<exiftool>. This also means that if you use
+the file modification time to specify the date/time to set, you will
+need to update the QuickTime CreateDate to reflect this as well
+(e.g. by using C<exiftool -api QuickTimeUTC
+"-QuickTime:CreateDate<FileModifyDate" FILE>).
+
 By default, the timezone information is left as was recorded by the
 camera, but you can change this by specifying a different timzezone
 (and, for MTS and M2TS files, a different daylight savings flag).
@@ -40,9 +48,14 @@ MTS/M2TS files).
 
 =head1 SYNOPSIS
 
-  matchDateTime [-recurse] [-overwrite] [utc] [-tz TZ [-dst]] <Files>
+  matchDateTime [-recurse] [-overwrite] [-modtime] [-utc] [-tz TZ [-dst]] <Files>
 
 =head1 OPTIONS
+
+The following options are available.
+
+Note: option names can be abbreviated so e.g. C<-r> or C<-rec> can be
+used instead of the full option name C<-recurse>.
 
 =over 4
 
@@ -54,6 +67,14 @@ in those directories, so use with care!
 =item -overwrite
 
 Overwrites the original file instead of renaming it to C<_original>.
+
+=item -modtime
+
+Instructs matchDateTime to use the file modification time instead of
+the QuickTime CreateDate.
+
+Note: This option is always in effect when matching the date times of
+MTS and M2TS files.
 
 =item -utc
 
@@ -111,11 +132,12 @@ use Getopt::Long;
 use Pod::Usage;
 
 # Options
-my ($help, $recurse, $overwrite, $utc, $tz, $dst);
+my ($help, $recurse, $overwrite, $modtime, $utc, $tz, $dst);
 GetOptions(
     'help|?'    => \$help,
     'recurse'   => \$recurse,
     'overwrite' => \$overwrite,
+    'modtime'   => \$modtime,
     'utc'       => \$utc,
     'tz=i'      => \$tz,
     'dst'       => \$dst,
@@ -280,15 +302,26 @@ sub processNormal {
 
     # Get datetime information from exiftool
     $utc = $utc ? "-api QuickTimeUTC" : "";
-    my $datetimeInfo = qx(exiftool --a -s $utc -File:System:FileModifyDate -QuickTime:CreateDate -MakerNotes:DateTimeOriginal -QuickTime:CreationDate "$file");
-    my ($modifyDate, $modifyDateTZ) = $datetimeInfo =~ /FileModifyDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})(.*)/;
+    my $datetimeInfo = qx(exiftool --a -s $utc -File:System:FileModifyDate -QuickTime:CreateDate -MakerNotes:DateTimeOriginal -QuickTime:CreationDate "-QuickTime:CreationDate-*-*" "$file");
+    my ($modifyDate, $modifyDateTZ) = $datetimeInfo =~ /FileModifyDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})([+-]\d{2}:\d{2})?/;
+    $modifyDateTZ = "" if !defined $modifyDateTZ;
     print("Skipped: Unable to find FileModifyDate in $file\n"), return if !defined $modifyDate;
-    my ($createDate) = $datetimeInfo =~ /CreateDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})/;
-    print("Skipped: Unable to find QuickTime CreateDate in $file\n"), return if !defined $createDate;
+    my $createDate;
+    my $createDateTZ;
+    if (!$modtime) {
+        ($createDate, $createDateTZ) = $datetimeInfo =~ /CreateDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})([+-]\d{2}:\d{2})?/;
+        print("Skipped: Unable to find QuickTime CreateDate in $file\n"), return if !defined $createDate;
+    } else {
+        ($createDate, $createDateTZ) = ($modifyDate, $modifyDateTZ)
+    }
+    if ($utc && !defined $createDateTZ) {
+        printf("Skipped: No TimeZone information present for $file\n"), return if !$createDateTZ;
+    }
     my ($dateTimeOriginal) = $datetimeInfo =~ /DateTimeOriginal\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})/;
-    my ($creationDate) = $datetimeInfo =~ /CreationDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2})/;
+    my @creationDates = $datetimeInfo =~ /CreationDate(?:-.*-.*)?\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2})/g;
+    @creationDates = do { my %seen; grep { !$seen{$_}++ } @creationDates };
 
-    print("Skipped: Unable to find MakerNotes DateTimeOriginal or Creation Date in $file\n"), return if (!defined $dateTimeOriginal && !defined $creationDate);
+    print("Skipped: Unable to find MakerNotes DateTimeOriginal or Creation Date in $file\n"), return if (!defined $dateTimeOriginal && !@creationDates);
 
     # Read file
     my $data;
@@ -301,24 +334,29 @@ sub processNormal {
     if (defined $dateTimeOriginal) {
         $from = chr(20) . $dateTimeOriginal . chr(0);
         $to = chr(20) . $createDate . chr(0);
-        my $nr = $data =~ s/\Q$from\E/$to/g if ($from ne $to);
-        $changed += $nr;
-        print "Updated DateTimeOriginal $dateTimeOriginal => $createDate in $file ($nr times)\n";
+        if ($from ne $to) {
+            my $nr = $data =~ s/\Q$from\E/$to/g;
+            $changed += $nr;
+            print "Updated DateTimeOriginal $dateTimeOriginal => $createDate in $file ($nr times)\n";
+        }
     }
 
     # Change all CreationDate dates to match createDate
-    if (defined $creationDate) {
+    for my $creationDate (@creationDates) {
         $from = $creationDate;
         $from =~ s/(\d{4}):(\d{2}):(\d{2}) (\d{2}:\d{2}:\d{2})([+-]\d{2}):(\d{2})/$1-$2-$3T$4$5$6/;
         my $totz = defined $tz ? sprintf("%+03d00", $tz) : "$5$6";
-        if ($utc && !defined $tz && $datetimeInfo =~ /CreateDate\s*:\s*\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}([+-]\d{2}):(\d{2})/) {
-            $totz = "$1$2";
+        if (($modtime && $createDateTZ) || ($utc && !defined $tz)) {
+            $totz = $createDateTZ;
+            $totz =~ s/://;
         }
         $to = "$createDate$totz";
         $to =~ s/(\d{4}):(\d{2}):(\d{2}) (\d{2}:\d{2}:\d{2})([+-]\d{2}\d{2})/$1-$2-$3T$4$5/;
-        my $nr = $data =~ s/\Q$from\E/$to/g if ($from ne $to);
-        $changed += $nr;
-        print "Updated CreationDate $from => $to in $file ($nr times)\n";
+        if ($from ne $to) {
+            my $nr = $data =~ s/\Q$from\E/$to/g;
+            $changed += $nr;
+            print "Updated CreationDate $from => $to in $file ($nr times)\n";
+        }
     }
 
     # Write updated file (if changes were made)
