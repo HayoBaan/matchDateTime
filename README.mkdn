@@ -5,7 +5,7 @@ is unable to.
 
 # VERSION
 
-version 0.007
+version 0.008
 
 # DESCRIPTION
 
@@ -21,6 +21,14 @@ the file modification date as the new target date and update all
 occurrences of the DateTimeOriginal with this. All sequential
 timestamps are updated as well.
 
+Important: No other date/time tags than as described will get
+updated. So if you want any other tags to change as well, you will
+need to additionally use `exiftool`. This also means that if you use
+the file modification time to specify the date/time to set, you will
+need to update the QuickTime CreateDate to reflect this as well
+(e.g. by using `exiftool -api QuickTimeUTC
+"-QuickTime:CreateDate<FileModifyDate" FILE`).
+
 By default, the timezone information is left as was recorded by the
 camera, but you can change this by specifying a different timzezone
 (and, for MTS and M2TS files, a different daylight savings flag).
@@ -34,9 +42,14 @@ MTS/M2TS files).
 
 # SYNOPSIS
 
-    matchDateTime [-recurse] [-overwrite] [utc] [-tz TZ [-dst]] <Files>
+    matchDateTime [-recurse] [-overwrite] [-modtime] [-utc] [-tz TZ [-dst]] <Files>
 
 # OPTIONS
+
+The following options are available.
+
+Note: option names can be abbreviated so e.g. `-r` or `-rec` can be
+used instead of the full option name `-recurse`.
 
 - -recurse
 
@@ -46,6 +59,14 @@ MTS/M2TS files).
 - -overwrite
 
     Overwrites the original file instead of renaming it to `_original`.
+
+- -modtime
+
+    Instructs matchDateTime to use the file modification time instead of
+    the QuickTime CreateDate.
+
+    Note: This option is always in effect when matching the date times of
+    MTS and M2TS files.
 
 - -utc
 
