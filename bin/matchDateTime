@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-our $VERSION = '0.008';
+our $VERSION = '0.009';
 
 =head1 NAME
 
@@ -11,16 +11,16 @@ is unable to.
 
 =head1 VERSION
 
-version 0.008
+version 0.009
 
 =head1 DESCRIPTION
 
 C<matchDateTime> updates the date/time info in (movie) files where
 ExifTool is unable to.
 
-For "normal" movie files the maker note DateTimeOriginal and QuickTime
-CreationDate dates (and any other matching dates) are updated with the
-date as set in the QuickTime CreateDate.
+For "normal" movie files, the maker note DateTimeOriginal and
+QuickTime CreationDate dates (and any other matching dates) are
+updated with the date as set in the QuickTime CreateDate.
 
 MTS and M2TS movie files are handled specially, in that here we take
 the file modification date as the new target date and update all
@@ -31,9 +31,9 @@ Important: No other date/time tags than as described will get
 updated. So if you want any other tags to change as well, you will
 need to additionally use C<exiftool>. This also means that if you use
 the file modification time to specify the date/time to set, you will
-need to update the QuickTime CreateDate to reflect this as well
-(e.g. by using C<exiftool -api QuickTimeUTC
-"-QuickTime:CreateDate<FileModifyDate" FILE>).
+need to update the QuickTime CreateDate to reflect this (e.g. by using
+C<exiftool -api QuickTimeUTC "-QuickTime:CreateDate<FileModifyDate"
+FILE>).
 
 By default, the timezone information is left as was recorded by the
 camera, but you can change this by specifying a different timzezone
