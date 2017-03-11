@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-our $VERSION = '0.009';
+our $VERSION = '0.010';
 
 =head1 NAME
 
@@ -11,7 +11,7 @@ is unable to.
 
 =head1 VERSION
 
-version 0.009
+version 0.010
 
 =head1 DESCRIPTION
 
@@ -260,7 +260,7 @@ sub processMts {
     print("Skipped: Unable to find FileModifyDate in $file\n"), return if !defined $modifyDate;
     my ($dateTimeOriginal) = $datetimeInfo =~ /DateTimeOriginal\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})/;
     print("Skipped: Unable to find H264 DateTimeOriginal in $file\n"), return if !defined $dateTimeOriginal;
-    print("Skipped: Dates already the same in $file\n"), return if $modifyDate eq $dateTimeOriginal;
+    print("Skipped: Dates already the same in $file\n"), return if ($modifyDate eq $dateTimeOriginal) && (!defined $tz);
 
     my $data;
     readFile($file, \$data);
