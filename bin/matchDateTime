@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-our $VERSION = '0.010';
+our $VERSION = '0.011';
 
 =head1 NAME
 
@@ -11,7 +11,7 @@ is unable to.
 
 =head1 VERSION
 
-version 0.010
+version 0.011
 
 =head1 DESCRIPTION
 
@@ -273,18 +273,20 @@ sub processMts {
         $tz = $orgTz;
         $dst = $orgDst;
     }
-    $from = toH264DateTime($dateTimeOriginal, $orgTz, $orgDst, 1);
-    my $to = toH264DateTime($modifyDate, $tz, $dst, 0);
+    my $fromDate = $dateTimeOriginal;
+    my $toDate = $modifyDate;
+    $from = toH264DateTime($fromDate, $orgTz, $orgDst, 1);
+    my $to = toH264DateTime($toDate, $tz, $dst, 0);
 
     # Now change all datetimes found, increasing time by one second until no more matches
     my $totalNr = 0;
     while (my $nr = $data =~ s/$from/$to/g) {
-        printf "Updated $dateTimeOriginal %+03d:00%s => $modifyDate %+03d:00%s in $file ($nr times)\n", $orgTz, $orgDst ? " DST" : "", $tz, $dst ? " DST" : "";
+        printf "Updated $fromDate %+03d:00%s => $toDate %+03d:00%s in $file ($nr times)\n", $orgTz, $orgDst ? " DST" : "", $tz, $dst ? " DST" : "";
         $totalNr += $nr;
-        $dateTimeOriginal = addSecond($dateTimeOriginal);
-        $modifyDate = addSecond($modifyDate);
-        $from = toH264DateTime($dateTimeOriginal, $orgTz, $orgDst, 1);
-        $to = toH264DateTime($modifyDate, $tz, $dst, 0);
+        $fromDate = addSecond($fromDate);
+        $toDate = addSecond($toDate);
+        $from = toH264DateTime($fromDate, $orgTz, $orgDst, 1);
+        $to = toH264DateTime($toDate, $tz, $dst, 0);
     }
 
     if ($totalNr) {
