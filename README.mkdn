@@ -5,7 +5,7 @@ is unable to.
 
 # VERSION
 
-version 0.010
+version 0.011
 
 # DESCRIPTION
 
