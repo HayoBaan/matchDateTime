@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-our $VERSION = '0.011';
+our $VERSION = '0.012';
 
 =head1 NAME
 
@@ -11,16 +11,17 @@ is unable to.
 
 =head1 VERSION
 
-version 0.011
+version 0.012
 
 =head1 DESCRIPTION
 
 C<matchDateTime> updates the date/time info in (movie) files where
 ExifTool is unable to.
 
-For "normal" movie files, the maker note DateTimeOriginal and
-QuickTime CreationDate dates (and any other matching dates) are
-updated with the date as set in the QuickTime CreateDate.
+For "normal" movie files, the maker note DateTimeOriginal, QuickTime
+CreationDate, XML LastUpdate, and XML CreationDateValue dates (and any
+other matching dates) are updated with the date as set in the
+QuickTime CreateDate.
 
 MTS and M2TS movie files are handled specially, in that here we take
 the file modification date as the new target date and update all
@@ -304,7 +305,7 @@ sub processNormal {
 
     # Get datetime information from exiftool
     $utc = $utc ? "-api QuickTimeUTC" : "";
-    my $datetimeInfo = qx(exiftool --a -s $utc -File:System:FileModifyDate -QuickTime:CreateDate -MakerNotes:DateTimeOriginal -QuickTime:CreationDate "-QuickTime:CreationDate-*-*" "$file");
+    my $datetimeInfo = qx(exiftool --a -s $utc -File:System:FileModifyDate -QuickTime:CreateDate -MakerNotes:DateTimeOriginal -QuickTime:CreationDate "-QuickTime:CreationDate-*-*" -XML:LastUpdate -XML:CreationDateValue "$file");
     my ($modifyDate, $modifyDateTZ) = $datetimeInfo =~ /FileModifyDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})([+-]\d{2}:\d{2})?/;
     $modifyDateTZ = "" if !defined $modifyDateTZ;
     print("Skipped: Unable to find FileModifyDate in $file\n"), return if !defined $modifyDate;
@@ -322,8 +323,17 @@ sub processNormal {
     my ($dateTimeOriginal) = $datetimeInfo =~ /DateTimeOriginal\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})/;
     my @creationDates = $datetimeInfo =~ /CreationDate(?:-.*-.*)?\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2})/g;
     @creationDates = do { my %seen; grep { !$seen{$_}++ } @creationDates };
+    my ($lastUpdate) = $datetimeInfo =~ /LastUpdate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2})/;
+    my ($creationDateValue) = $datetimeInfo =~ /CreationDateValue\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2})/;
+    my @xmlDates;
+    if (defined $lastUpdate) {
+        push @xmlDates, $lastUpdate;
+        push @xmlDates, $creationDateValue if defined $creationDateValue && $lastUpdate ne $creationDateValue;
+    } elsif (defined $creationDateValue) {
+        push @xmlDates, $creationDateValue;
+    }
 
-    print("Skipped: Unable to find MakerNotes DateTimeOriginal or Creation Date in $file\n"), return if (!defined $dateTimeOriginal && !@creationDates);
+    print("Skipped: Unable to find MakerNotes DateTimeOriginal, Creation Date, or XML Date in $file\n"), return if (!defined $dateTimeOriginal && !@creationDates && !@xmlDates);
 
     # Read file
     my $data;
@@ -358,6 +368,23 @@ sub processNormal {
             my $nr = $data =~ s/\Q$from\E/$to/g;
             $changed += $nr;
             print "Updated CreationDate $from => $to in $file ($nr times)\n";
+        }
+    }
+
+    # Change all XML (=LastUpdate and/or CreationDateValue) dates to match createDate
+    for my $xmlDate (@xmlDates) {
+        $from = $xmlDate;
+        $from =~ s/(\d{4}):(\d{2}):(\d{2}) (\d{2}:\d{2}:\d{2})([+-]\d{2}:\d{2})/$1-$2-$3T$4$5/;
+        my $totz = defined $tz ? sprintf("%+03d:00", $tz) : "$5";
+        if (($modtime && $createDateTZ) || ($utc && !defined $tz)) {
+            $totz = $createDateTZ;
+        }
+        $to = "$createDate$totz";
+        $to =~ s/(\d{4}):(\d{2}):(\d{2}) (\d{2}:\d{2}:\d{2})([+-]\d{2}:\d{2})/$1-$2-$3T$4$5/;
+        if ($from ne $to) {
+            my $nr = $data =~ s/\Q$from\E/$to/g;
+            $changed += $nr;
+            print "Updated XML Date $from => $to in $file ($nr times)\n";
         }
     }
 
