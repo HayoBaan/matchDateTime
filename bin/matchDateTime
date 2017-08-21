@@ -114,7 +114,7 @@ No installation is required, the script can be called
 directly. Optionally you can put the script in a directory on your
 path so it can be run from anywhere. On windows you may need to give
 the file an extension that is recognized as perl command (e.g.,
-`.PL`).
+C<.PL>).
 
 =head1 AUTHOR
 
