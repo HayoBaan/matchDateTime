@@ -5,16 +5,17 @@ is unable to.
 
 # VERSION
 
-version 0.011
+version 0.012
 
 # DESCRIPTION
 
 `matchDateTime` updates the date/time info in (movie) files where
 ExifTool is unable to.
 
-For "normal" movie files, the maker note DateTimeOriginal and
-QuickTime CreationDate dates (and any other matching dates) are
-updated with the date as set in the QuickTime CreateDate.
+For "normal" movie files, the maker note DateTimeOriginal, QuickTime
+CreationDate, XML LastUpdate, and XML CreationDateValue dates (and any
+other matching dates) are updated with the date as set in the
+QuickTime CreateDate.
 
 MTS and M2TS movie files are handled specially, in that here we take
 the file modification date as the new target date and update all
@@ -103,7 +104,7 @@ No installation is required, the script can be called
 directly. Optionally you can put the script in a directory on your
 path so it can be run from anywhere. On windows you may need to give
 the file an extension that is recognized as perl command (e.g.,
-\`.PL\`).
+`.PL`).
 
 # AUTHOR
 
