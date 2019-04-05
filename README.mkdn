@@ -5,41 +5,34 @@ is unable to.
 
 # VERSION
 
-version 0.012
+version 0.013
 
 # DESCRIPTION
 
-`matchDateTime` updates the date/time info in (movie) files where
-ExifTool is unable to.
+`matchDateTime` updates the date/time info in (movie) files where ExifTool is
+unable to.
 
-For "normal" movie files, the maker note DateTimeOriginal, QuickTime
-CreationDate, XML LastUpdate, and XML CreationDateValue dates (and any
-other matching dates) are updated with the date as set in the
-QuickTime CreateDate.
+For "normal" movie files, the maker note DateTimeOriginal, XML LastUpdate, and
+XML CreationDateValue dates (and any other matching dates) are updated with the
+date as set in the QuickTime CreateDate tag.
 
-MTS and M2TS movie files are handled specially, in that here we take
-the file modification date as the new target date and update all
-occurrences of the DateTimeOriginal with this. All sequential
-timestamps are updated as well.
+MTS and M2TS movie files are handled differently, in that here we take the file
+modification date as the new target date and update all occurrences of the
+DateTimeOriginal with this. All sequential timestamps are updated as well.
 
-Important: No other date/time tags than as described will get
-updated. So if you want any other tags to change as well, you will
-need to additionally use `exiftool`. This also means that if you use
-the file modification time to specify the date/time to set, you will
-need to update the QuickTime CreateDate to reflect this (e.g. by using
-`exiftool -api QuickTimeUTC "-QuickTime:CreateDate<FileModifyDate"
-FILE`).
+Important: No other date/time tags than as described will get updated. So if
+you want any other tags to change as well, you will need to additionally use
+`exiftool`.
 
-By default, the timezone information is left as was recorded by the
-camera, but you can change this by specifying a different timzezone
-(and, for MTS and M2TS files, a different daylight savings flag).
+By default, the timezone information is left as was recorded by the camera, but
+you can change this by specifying a different timezone (and, for MTS and M2TS
+files, a different daylight savings flag).
 
-The tool works by replacing any sequence of bytes that exactly match
-the original value by the (correctly formatted) QuickTime
-CreateDate. Note that with this approach it is possible that actual
-movie data is changed as well. This, however, is extremely unlikely:
-the chance of this occuring is less than 1/256^20 (1/256^10 for
-MTS/M2TS files).
+The tool works by replacing any sequence of bytes that exactly match the
+original value by the (correctly formatted) QuickTime CreateDate. Note that
+with this approach it is possible that actual movie data is changed as
+well. This, however, is extremely unlikely: the chance of this occuring is less
+than 1/256^20 (1/256^10 for MTS/M2TS files).
 
 # SYNOPSIS
 
@@ -91,6 +84,8 @@ used instead of the full option name `-recurse`.
     Indicates the daylight savings flag should be set when writing the new
     timezone information (only used when the `-tz` option is also
     specified).
+
+    Note: Only applicable to MTS and MTS2 files.
 
 # PREREQUISITES
 
