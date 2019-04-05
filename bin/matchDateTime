@@ -2,50 +2,43 @@
 use strict;
 use warnings;
 
-our $VERSION = '0.012';
+our $VERSION = '0.013';
 
 =head1 NAME
 
-matchDateTime -- matches date/time info in movie files where ExifTool
-is unable to.
+matchDateTime -- matches date/time info in movie files where ExifTool is unable
+to.
 
 =head1 VERSION
 
-version 0.012
+version 0.013
 
 =head1 DESCRIPTION
 
-C<matchDateTime> updates the date/time info in (movie) files where
-ExifTool is unable to.
+C<matchDateTime> updates the date/time info in (movie) files where ExifTool is
+unable to.
 
-For "normal" movie files, the maker note DateTimeOriginal, QuickTime
-CreationDate, XML LastUpdate, and XML CreationDateValue dates (and any
-other matching dates) are updated with the date as set in the
-QuickTime CreateDate.
+For "normal" movie files, the maker note DateTimeOriginal, XML LastUpdate, and
+XML CreationDateValue dates (and any other matching dates) are updated with the
+date as set in the QuickTime CreateDate tag.
 
-MTS and M2TS movie files are handled specially, in that here we take
-the file modification date as the new target date and update all
-occurrences of the DateTimeOriginal with this. All sequential
-timestamps are updated as well.
+MTS and M2TS movie files are handled differently, in that here we take the file
+modification date as the new target date and update all occurrences of the
+DateTimeOriginal with this. All sequential timestamps are updated as well.
 
-Important: No other date/time tags than as described will get
-updated. So if you want any other tags to change as well, you will
-need to additionally use C<exiftool>. This also means that if you use
-the file modification time to specify the date/time to set, you will
-need to update the QuickTime CreateDate to reflect this (e.g. by using
-C<exiftool -api QuickTimeUTC "-QuickTime:CreateDate<FileModifyDate"
-FILE>).
+Important: No other date/time tags than as described will get updated. So if
+you want any other tags to change as well, you will need to additionally use
+C<exiftool>.
 
-By default, the timezone information is left as was recorded by the
-camera, but you can change this by specifying a different timzezone
-(and, for MTS and M2TS files, a different daylight savings flag).
+By default, the timezone information is left as was recorded by the camera, but
+you can change this by specifying a different timezone (and, for MTS and M2TS
+files, a different daylight savings flag).
 
-The tool works by replacing any sequence of bytes that exactly match
-the original value by the (correctly formatted) QuickTime
-CreateDate. Note that with this approach it is possible that actual
-movie data is changed as well. This, however, is extremely unlikely:
-the chance of this occuring is less than 1/256^20 (1/256^10 for
-MTS/M2TS files).
+The tool works by replacing any sequence of bytes that exactly match the
+original value by the (correctly formatted) QuickTime CreateDate. Note that
+with this approach it is possible that actual movie data is changed as
+well. This, however, is extremely unlikely: the chance of this occuring is less
+than 1/256^20 (1/256^10 for MTS/M2TS files).
 
 =head1 SYNOPSIS
 
@@ -55,15 +48,15 @@ MTS/M2TS files).
 
 The following options are available.
 
-Note: option names can be abbreviated so e.g. C<-r> or C<-rec> can be
-used instead of the full option name C<-recurse>.
+Note: option names can be abbreviated so e.g. C<-r> or C<-rec> can be used
+instead of the full option name C<-recurse>.
 
 =over 4
 
 =item -recurse
 
-Recurse directories. This will have matchDateTime process B<all> files
-in those directories, so use with care!
+Recurse directories. This will have matchDateTime process B<all> files in those
+directories, so use with care!
 
 =item -overwrite
 
@@ -71,24 +64,23 @@ Overwrites the original file instead of renaming it to C<_original>.
 
 =item -modtime
 
-Instructs matchDateTime to use the file modification time instead of
-the QuickTime CreateDate.
+Instructs matchDateTime to use the file modification time instead of the
+QuickTime CreateDate.
 
-Note: This option is always in effect when matching the date times of
-MTS and M2TS files.
+Note: This option is always in effect when matching the date times of MTS and
+M2TS files.
 
 =item -utc
 
-Indicates that QuickTime times are in UTC. This will convert the
-QuickTime time back to the local time, so any updates to the maker
-notes DateTimeOriginal and the CreationDate will also be in this time.
+Indicates that QuickTime times are in UTC. This will convert the QuickTime time
+back to the local time, so any updates to e.g. the maker notes DateTimeOriginal
+will also be in this time.
 
-With this option, if the file was recorded in a different timezone
-from your local, you should (temporarily) set the timezone to the
-timezone at the location of the recording. In Unix or on a Mac, this
-can be done by setting the TZ variable for the duration of the
-C<matchDateTime> command like so: C<TZ="America/New_York"
-matchDateTime -utc FILE>.
+With this option, if the file was recorded in a different timezone from your
+local timezone, you should (temporarily) set the timezone to the timezone at
+the location of the recording. In Unix or on a Mac, this can be done by setting
+the TZ variable for the duration of the C<matchDateTime> command like so:
+C<TZ="America/New_York" matchDateTime -utc FILE>.
 
 =item -tz I<TZ>
 
@@ -96,9 +88,10 @@ Use I<TZ> as the new time zone. Specify the time zone in hours.
 
 =item -dst
 
-Indicates the daylight savings flag should be set when writing the new
-timezone information (only used when the C<-tz> option is also
-specified).
+Indicates the daylight savings flag should be set when writing the new timezone
+information (only used when the C<-tz> option is also specified).
+
+Note: only applicaple to MTS and MTS2 files.
 
 =back
 
@@ -110,11 +103,10 @@ installed.
 
 =head1 INSTALLATION
 
-No installation is required, the script can be called
-directly. Optionally you can put the script in a directory on your
-path so it can be run from anywhere. On windows you may need to give
-the file an extension that is recognized as perl command (e.g.,
-C<.PL>).
+No installation is required, the script can be called directly. Optionally you
+can put the script in a directory on your path so it can be run from anywhere.
+On windows you may need to give the file an extension that is recognized as
+perl command (e.g., C<.PL>).
 
 =head1 AUTHOR
 
@@ -305,7 +297,7 @@ sub processNormal {
 
     # Get datetime information from exiftool
     $utc = $utc ? "-api QuickTimeUTC" : "";
-    my $datetimeInfo = qx(exiftool --a -s $utc -File:System:FileModifyDate -QuickTime:CreateDate -MakerNotes:DateTimeOriginal -QuickTime:CreationDate "-QuickTime:CreationDate-*-*" -XML:LastUpdate -XML:CreationDateValue "$file");
+    my $datetimeInfo = qx(exiftool --a -s $utc -File:System:FileModifyDate -QuickTime:CreateDate -MakerNotes:DateTimeOriginal -XML:LastUpdate -XML:CreationDateValue "$file");
     my ($modifyDate, $modifyDateTZ) = $datetimeInfo =~ /FileModifyDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})([+-]\d{2}:\d{2})?/;
     $modifyDateTZ = "" if !defined $modifyDateTZ;
     print("Skipped: Unable to find FileModifyDate in $file\n"), return if !defined $modifyDate;
@@ -321,8 +313,6 @@ sub processNormal {
         printf("Skipped: No TimeZone information present for $file\n"), return if !$createDateTZ;
     }
     my ($dateTimeOriginal) = $datetimeInfo =~ /DateTimeOriginal\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})/;
-    my @creationDates = $datetimeInfo =~ /CreationDate(?:-.*-.*)?\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2})/g;
-    @creationDates = do { my %seen; grep { !$seen{$_}++ } @creationDates };
     my ($lastUpdate) = $datetimeInfo =~ /LastUpdate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2})/;
     my ($creationDateValue) = $datetimeInfo =~ /CreationDateValue\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2})/;
     my @xmlDates;
@@ -333,7 +323,7 @@ sub processNormal {
         push @xmlDates, $creationDateValue;
     }
 
-    print("Skipped: Unable to find MakerNotes DateTimeOriginal, Creation Date, or XML Date in $file\n"), return if (!defined $dateTimeOriginal && !@creationDates && !@xmlDates);
+    print("Skipped: Unable to find MakerNotes DateTimeOriginal, or XML Date in $file\n"), return if (!defined $dateTimeOriginal && !@xmlDates);
 
     # Read file
     my $data;
@@ -353,25 +343,7 @@ sub processNormal {
         }
     }
 
-    # Change all CreationDate dates to match createDate
-    for my $creationDate (@creationDates) {
-        $from = $creationDate;
-        $from =~ s/(\d{4}):(\d{2}):(\d{2}) (\d{2}:\d{2}:\d{2})([+-]\d{2}):(\d{2})/$1-$2-$3T$4$5$6/;
-        my $totz = defined $tz ? sprintf("%+03d00", $tz) : "$5$6";
-        if (($modtime && $createDateTZ) || ($utc && !defined $tz)) {
-            $totz = $createDateTZ;
-            $totz =~ s/://;
-        }
-        $to = "$createDate$totz";
-        $to =~ s/(\d{4}):(\d{2}):(\d{2}) (\d{2}:\d{2}:\d{2})([+-]\d{2}\d{2})/$1-$2-$3T$4$5/;
-        if ($from ne $to) {
-            my $nr = $data =~ s/\Q$from\E/$to/g;
-            $changed += $nr;
-            print "Updated CreationDate $from => $to in $file ($nr times)\n";
-        }
-    }
-
-    # Change all XML (=LastUpdate and/or CreationDateValue) dates to match createDate
+    # Change all XML (i.e. LastUpdate and/or CreationDateValue) dates to match createDate
     for my $xmlDate (@xmlDates) {
         $from = $xmlDate;
         $from =~ s/(\d{4}):(\d{2}):(\d{2}) (\d{2}:\d{2}:\d{2})([+-]\d{2}:\d{2})/$1-$2-$3T$4$5/;
