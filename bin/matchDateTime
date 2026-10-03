@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-our $VERSION = '0.015';
+our $VERSION = '0.016';
 
 =head1 NAME
 
@@ -11,7 +11,7 @@ to.
 
 =head1 VERSION
 
-version 0.015
+version 0.016
 
 =head1 DESCRIPTION
 
@@ -42,27 +42,34 @@ than 1/256^20 (1/256^10 for MTS/M2TS files).
 
 =head1 SYNOPSIS
 
-  matchDateTime [-recurse] [-overwrite] [-modtime] [-utc] [-tz TZ [-dst]] <Files>
+  matchDateTime --help|-h
+
+  matchDateTime [--recurse] [--overwrite] [--modtime] [--utc] [--tz TZ [--dst]] <Files>
 
 =head1 OPTIONS
 
 The following options are available.
 
-Note: option names can be abbreviated so e.g. C<-r> or C<-rec> can be used
-instead of the full option name C<-recurse>.
+Long options also work with a single dash (e.g. C<-recurse>). Option names can
+be abbreviated, so e.g. C<-r> or C<--rec> can be used instead of the full option
+name C<--recurse>.
 
 =over 4
 
-=item -recurse
+=item --help, -h
+
+Show this help.
+
+=item --recurse
 
 Recurse directories. This will have matchDateTime process B<all> files in those
 directories, so use with care!
 
-=item -overwrite
+=item --overwrite
 
 Overwrites the original file instead of renaming it to C<_original>.
 
-=item -modtime
+=item --modtime
 
 Instructs matchDateTime to use the file modification time instead of the
 QuickTime CreateDate.
@@ -70,7 +77,7 @@ QuickTime CreateDate.
 Note: This option is always in effect when matching the date times of MTS and
 M2TS files.
 
-=item -utc
+=item --utc
 
 Indicates that QuickTime times are in UTC. This will convert the QuickTime time
 back to the local time, so any updates to e.g. the maker notes DateTimeOriginal
@@ -80,21 +87,21 @@ With this option, if the file was recorded in a different timezone from your
 local timezone, you should (temporarily) set the timezone to the timezone at
 the location of the recording. In Unix or on a Mac, this can be done by setting
 the TZ variable for the duration of the C<matchDateTime> command like so:
-C<TZ="America/New_York" matchDateTime -utc FILE>.
+C<TZ="America/New_York" matchDateTime --utc FILE>.
 
-=item -tz I<TZ>
+=item --tz I<TZ>
 
 Use I<TZ> as the new time zone. Specify the time zone in hours. Fractional
 hours are supported (e.g. specify +09:30 as 9.5).
 
-Note: for MTS/M2TS files, only half our precision is supported.
+Note: for MTS/M2TS files, only half hour precision is supported.
 
-=item -dst
+=item --dst
 
 Indicates the daylight savings flag should be set when writing the new timezone
-information (only used when the C<-tz> option is also specified).
+information (only used when the C<--tz> option is also specified).
 
-Note: only applicaple to MTS and MTS2 files.
+Note: only applicable to MTS and M2TS files.
 
 =back
 
@@ -128,12 +135,12 @@ use Getopt::Long;
 use Pod::Usage;
 
 # Options
-my ($help, $recurse, $overwrite, $modtime, $utc, $tz, $dst);
+my ($help, $recurse, $overwrite, $mod_time, $utc, $tz, $dst);
 GetOptions(
-    'help|?'    => \$help,
+    'help|h'    => \$help,
     'recurse'   => \$recurse,
     'overwrite' => \$overwrite,
-    'modtime'   => \$modtime,
+    'modtime'   => \$mod_time,
     'utc'       => \$utc,
     'tz=f'      => \$tz,
     'dst'       => \$dst,
@@ -142,23 +149,23 @@ pod2usage(-exitstatus => 0, -verbose => 2) if $help;
 pod2usage(-exitstatus => 1, -verbose => 0) unless @ARGV;
 
 # Read file into given buffer (reference)
-sub readFile {
+sub read_file {
     my $file = shift;
     my $buffer = shift;
 
     open(my $fh, '<:raw' ,$file) or die "Can't open $file: $!\n";
-    my $filesize = -s $file;
-    read($fh, $$buffer, $filesize) == $filesize or die "Unable to read all data in $file: $!\n";
+    my $file_size = -s $file;
+    read($fh, $$buffer, $file_size) == $file_size or die "Unable to read all data in $file: $!\n";
     close($fh);
 
     return;
 }
 
 # Write given buffer (reference) to file
-sub writeFile {
+sub write_file {
     my $file = shift;
     my $buffer = shift;
-    my $orgModifyDate = shift;
+    my $org_modify_date = shift;
 
     my $org = $file . "_original";
     if (!$overwrite && !-e $org) {
@@ -170,15 +177,15 @@ sub writeFile {
     close($fh);
 
     # Restore file modify date
-    my $res = qx(exiftool -File:System:FileModifyDate="$orgModifyDate" "$file");
+    my $res = qx(exiftool -File:System:FileModifyDate="$org_modify_date" "$file");
 
     return;
 }
 
-sub addSecond {
-    my $dateTime = shift;
+sub add_second {
+    my $date_time = shift;
 
-    my ($year, $month, $day, $hour, $minute, $second) = $dateTime =~ /(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/;
+    my ($year, $month, $day, $hour, $minute, $second) = $date_time =~ /(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/;
 
     $second++;
     if ($second >= 60) {
@@ -199,15 +206,15 @@ sub addSecond {
 }
 
 
-sub fromH264Tz {
-    my $h264Tz = ord(shift);
-    my $dst = $h264Tz & 0x40;
-    my $tz = ($h264Tz & 0x20 ? -1 : 1) * ($h264Tz & 0x1f) / 2.0;
+sub from_h264_tz {
+    my $h264_tz = ord(shift);
+    my $dst = $h264_tz & 0x40;
+    my $tz = ($h264_tz & 0x20 ? -1 : 1) * ($h264_tz & 0x1f) / 2.0;
 
     return ($tz, $dst);
 }
 
-sub toH264Tz {
+sub to_h264_tz {
     my $tz = shift;
     my $dst = shift;
 
@@ -217,155 +224,155 @@ sub toH264Tz {
     return chr(int ($tz * 2) | ($dst ? 0x40 : 0) | ($neg ? 0x20 : 0));
 }
 
-sub toH264Char {
+sub to_h264_char {
     my $val = shift;
-    my $asRegex = shift;
+    my $as_regex = shift;
     my $h264 = chr(16*(int $val / 10) + ($val % 10));
 
-    return $asRegex ? quotemeta($h264) : $h264;
+    return $as_regex ? quotemeta($h264) : $h264;
 }
 
-sub toH264DateTime {
-    my $dateTime = shift;
+sub to_h264_date_time {
+    my $date_time = shift;
     my $tz = shift;
     my $dst = shift;
-    my $asRegex = shift;
+    my $as_regex = shift;
 
-    my $h264 = toH264Char(18, $asRegex);
-    $h264 .= defined $tz ? ($asRegex ? quotemeta(toH264Tz($tz, $dst)) : toH264Tz($tz, $dst)) : '(.)';
-    $dateTime =~ /(\d{2})(\d{2}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/;
-    $h264 .= toH264Char($1, $asRegex);
-    $h264 .= toH264Char($2, $asRegex);
-    $h264 .= toH264Char($3, $asRegex);
-    $h264 .= toH264Char(19, $asRegex);
-    $h264 .= toH264Char($4, $asRegex);
-    $h264 .= toH264Char($5, $asRegex);
-    $h264 .= toH264Char($6, $asRegex);
-    $h264 .= toH264Char($7, $asRegex);
+    my $h264 = to_h264_char(18, $as_regex);
+    $h264 .= defined $tz ? ($as_regex ? quotemeta(to_h264_tz($tz, $dst)) : to_h264_tz($tz, $dst)) : '(.)';
+    $date_time =~ /(\d{2})(\d{2}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/;
+    $h264 .= to_h264_char($1, $as_regex);
+    $h264 .= to_h264_char($2, $as_regex);
+    $h264 .= to_h264_char($3, $as_regex);
+    $h264 .= to_h264_char(19, $as_regex);
+    $h264 .= to_h264_char($4, $as_regex);
+    $h264 .= to_h264_char($5, $as_regex);
+    $h264 .= to_h264_char($6, $as_regex);
+    $h264 .= to_h264_char($7, $as_regex);
     return $h264;
 }
 
-sub tzString {
+sub tz_string {
     my $tz = shift;
     my $hours = int($tz);
     my $minutes = int abs(60*($tz - $hours));
     return sprintf "%+03d:%02d", $hours, $minutes;
 }
 
-sub tzDstString {
+sub tz_dst_string {
     my $tz = shift;
     my $dst = shift;
-    return sprintf "%s%s", tzString($tz), $dst ? " DST" : "";
+    return sprintf "%s%s", tz_string($tz), $dst ? " DST" : "";
 }
 
-sub processMts {
+sub process_mts {
     my $file = shift;
 
     # Get datetime information from exiftool
-    my $datetimeInfo = qx(exiftool --a -s -File:System:FileModifyDate -H264:DateTimeOriginal "$file");
-    my ($modifyDate, $modifyDateTZ) = $datetimeInfo =~ /FileModifyDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})(.*)/;
-    print("Skipped: Unable to find FileModifyDate in $file\n"), return if !defined $modifyDate;
-    my ($dateTimeOriginal) = $datetimeInfo =~ /DateTimeOriginal\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})/;
-    print("Skipped: Unable to find H264 DateTimeOriginal in $file\n"), return if !defined $dateTimeOriginal;
-    print("Skipped: Dates already the same in $file\n"), return if ($modifyDate eq $dateTimeOriginal) && (!defined $tz);
+    my $datetime_info = qx(exiftool --a -s -File:System:FileModifyDate -H264:DateTimeOriginal "$file");
+    my ($modify_date, $modify_date_tz) = $datetime_info =~ /FileModifyDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})(.*)/;
+    print("Skipped: Unable to find FileModifyDate in $file\n"), return if !defined $modify_date;
+    my ($date_time_original) = $datetime_info =~ /DateTimeOriginal\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})/;
+    print("Skipped: Unable to find H264 DateTimeOriginal in $file\n"), return if !defined $date_time_original;
+    print("Skipped: Dates already the same in $file\n"), return if ($modify_date eq $date_time_original) && (!defined $tz);
 
     my $data;
-    readFile($file, \$data);
+    read_file($file, \$data);
 
     # Get original timezone / dst
-    my $from = toH264DateTime($dateTimeOriginal, undef, undef, 1);
-    my ($orgTzInfo) = $data =~ /$from/;
-    my ($orgTz, $orgDst) = fromH264Tz($orgTzInfo);
+    my $from = to_h264_date_time($date_time_original, undef, undef, 1);
+    my ($org_tz_info) = $data =~ /$from/;
+    my ($org_tz, $org_dst) = from_h264_tz($org_tz_info);
     if (!defined $tz) {
-        $tz = $orgTz;
-        $dst = $orgDst;
+        $tz = $org_tz;
+        $dst = $org_dst;
     }
-    my $fromDate = $dateTimeOriginal;
-    my $toDate = $modifyDate;
-    $from = toH264DateTime($fromDate, $orgTz, $orgDst, 1);
-    my $to = toH264DateTime($toDate, $tz, $dst, 0);
+    my $from_date = $date_time_original;
+    my $to_date = $modify_date;
+    $from = to_h264_date_time($from_date, $org_tz, $org_dst, 1);
+    my $to = to_h264_date_time($to_date, $tz, $dst, 0);
 
     # Now change all datetimes found, increasing time by one second until no more matches
-    my $totalNr = 0;
+    my $total_nr = 0;
     while (my $nr = $data =~ s/$from/$to/g) {
-        printf "Updated $fromDate %s => $toDate %s in $file ($nr times)\n", tzDstString($orgTz, $orgDst), tzDstString($tz, $dst);
-        $totalNr += $nr;
-        $fromDate = addSecond($fromDate);
-        $toDate = addSecond($toDate);
-        $from = toH264DateTime($fromDate, $orgTz, $orgDst, 1);
-        $to = toH264DateTime($toDate, $tz, $dst, 0);
+        printf "Updated $from_date %s => $to_date %s in $file ($nr times)\n", tz_dst_string($org_tz, $org_dst), tz_dst_string($tz, $dst);
+        $total_nr += $nr;
+        $from_date = add_second($from_date);
+        $to_date = add_second($to_date);
+        $from = to_h264_date_time($from_date, $org_tz, $org_dst, 1);
+        $to = to_h264_date_time($to_date, $tz, $dst, 0);
     }
 
-    if ($totalNr) {
-        writeFile($file, \$data, "$modifyDate$modifyDateTZ");
-        print "OK: Changed date $totalNr times in $file\n";
+    if ($total_nr) {
+        write_file($file, \$data, "$modify_date$modify_date_tz");
+        print "OK: Changed date $total_nr times in $file\n";
     } else {
         print "WARNING: No changes made to $file\n";
     }
 
-    return $totalNr;
+    return $total_nr;
 }
 
-sub processNormal {
+sub process_normal {
     my $file = shift;
 
     # Get datetime information from exiftool
     $utc = $utc ? "-api QuickTimeUTC" : "";
-    my $datetimeInfo = qx(exiftool --a -s $utc -File:System:FileModifyDate -QuickTime:CreateDate -MakerNotes:DateTimeOriginal -XML:LastUpdate -XML:CreationDateValue "$file");
-    my ($modifyDate, $modifyDateTZ) = $datetimeInfo =~ /FileModifyDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})([+-]\d{2}:\d{2})?/;
-    $modifyDateTZ = "" if !defined $modifyDateTZ;
-    print("Skipped: Unable to find FileModifyDate in $file\n"), return if !defined $modifyDate;
-    my $createDate;
-    my $createDateTZ;
-    if (!$modtime) {
-        ($createDate, $createDateTZ) = $datetimeInfo =~ /CreateDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})([+-]\d{2}:\d{2})?/;
-        print("Skipped: Unable to find QuickTime CreateDate in $file\n"), return if !defined $createDate;
+    my $datetime_info = qx(exiftool --a -s $utc -File:System:FileModifyDate -QuickTime:CreateDate -MakerNotes:DateTimeOriginal -XML:LastUpdate -XML:CreationDateValue "$file");
+    my ($modify_date, $modify_date_tz) = $datetime_info =~ /FileModifyDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})([+-]\d{2}:\d{2})?/;
+    $modify_date_tz = "" if !defined $modify_date_tz;
+    print("Skipped: Unable to find FileModifyDate in $file\n"), return if !defined $modify_date;
+    my $create_date;
+    my $create_date_tz;
+    if (!$mod_time) {
+        ($create_date, $create_date_tz) = $datetime_info =~ /CreateDate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})([+-]\d{2}:\d{2})?/;
+        print("Skipped: Unable to find QuickTime CreateDate in $file\n"), return if !defined $create_date;
     } else {
-        ($createDate, $createDateTZ) = ($modifyDate, $modifyDateTZ)
+        ($create_date, $create_date_tz) = ($modify_date, $modify_date_tz)
     }
-    if ($utc && !defined $createDateTZ) {
-        printf("Skipped: No TimeZone information present for $file\n"), return if !$createDateTZ;
+    if ($utc && !defined $create_date_tz) {
+        printf("Skipped: No TimeZone information present for $file\n"), return if !$create_date_tz;
     }
-    my ($dateTimeOriginal) = $datetimeInfo =~ /DateTimeOriginal\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})/;
-    my ($lastUpdate) = $datetimeInfo =~ /LastUpdate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2})/;
-    my ($creationDateValue) = $datetimeInfo =~ /CreationDateValue\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2})/;
-    my @xmlDates;
-    if (defined $lastUpdate) {
-        push @xmlDates, $lastUpdate;
-        push @xmlDates, $creationDateValue if defined $creationDateValue && $lastUpdate ne $creationDateValue;
-    } elsif (defined $creationDateValue) {
-        push @xmlDates, $creationDateValue;
+    my ($date_time_original) = $datetime_info =~ /DateTimeOriginal\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2})/;
+    my ($last_update) = $datetime_info =~ /LastUpdate\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2})/;
+    my ($creation_date_value) = $datetime_info =~ /CreationDateValue\s*:\s*(\d{4}:\d{2}:\d{2} \d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2})/;
+    my @xml_dates;
+    if (defined $last_update) {
+        push @xml_dates, $last_update;
+        push @xml_dates, $creation_date_value if defined $creation_date_value && $last_update ne $creation_date_value;
+    } elsif (defined $creation_date_value) {
+        push @xml_dates, $creation_date_value;
     }
 
-    print("Skipped: Unable to find MakerNotes DateTimeOriginal, or XML Date in $file\n"), return if (!defined $dateTimeOriginal && !@xmlDates);
+    print("Skipped: Unable to find MakerNotes DateTimeOriginal, or XML Date in $file\n"), return if (!defined $date_time_original && !@xml_dates);
 
     # Read file
     my $data;
-    readFile($file, \$data);
+    read_file($file, \$data);
 
     my ($from, $to);
     my $changed = 0;
 
-    # Change all dateTimeOriginal dates to match createDate
-    if (defined $dateTimeOriginal) {
-        $from = chr(20) . $dateTimeOriginal . chr(0);
-        $to = chr(20) . $createDate . chr(0);
+    # Change all DateTimeOriginal dates to match CreateDate
+    if (defined $date_time_original) {
+        $from = chr(20) . $date_time_original . chr(0);
+        $to = chr(20) . $create_date . chr(0);
         if ($from ne $to) {
             my $nr = $data =~ s/\Q$from\E/$to/g;
             $changed += $nr;
-            print "Updated DateTimeOriginal $dateTimeOriginal => $createDate in $file ($nr times)\n";
+            print "Updated DateTimeOriginal $date_time_original => $create_date in $file ($nr times)\n";
         }
     }
 
-    # Change all XML (i.e. LastUpdate and/or CreationDateValue) dates to match createDate
-    for my $xmlDate (@xmlDates) {
-        $from = $xmlDate;
+    # Change all XML (i.e. LastUpdate and/or CreationDateValue) dates to match CreateDate
+    for my $xml_date (@xml_dates) {
+        $from = $xml_date;
         $from =~ s/(\d{4}):(\d{2}):(\d{2}) (\d{2}:\d{2}:\d{2})([+-]\d{2}:\d{2})/$1-$2-$3T$4$5/;
-        my $totz = defined $tz ? tzString($tz) : "$5";
-        if (($modtime && $createDateTZ) || ($utc && !defined $tz)) {
-            $totz = $createDateTZ;
+        my $totz = defined $tz ? tz_string($tz) : "$5";
+        if (($mod_time && $create_date_tz) || ($utc && !defined $tz)) {
+            $totz = $create_date_tz;
         }
-        $to = "$createDate$totz";
+        $to = "$create_date$totz";
         $to =~ s/(\d{4}):(\d{2}):(\d{2}) (\d{2}:\d{2}:\d{2})([+-]\d{2}:\d{2})/$1-$2-$3T$4$5/;
         if ($from ne $to) {
             my $nr = $data =~ s/\Q$from\E/$to/g;
@@ -376,7 +383,7 @@ sub processNormal {
 
     # Write updated file (if changes were made)
     if ($changed) {
-        writeFile($file, \$data, "$modifyDate$modifyDateTZ");
+        write_file($file, \$data, "$modify_date$modify_date_tz");
         print "OK: Changed date $changed times in $file\n";
     } else {
         print "WARNING: No changes made to $file\n";
@@ -391,9 +398,9 @@ while (@ARGV) {
 
     if (-f $file) {
         if ($file =~ /\.(?:mts|m2ts)$/i) {
-            processMts($file)
+            process_mts($file)
         } else {
-            processNormal($file);
+            process_normal($file);
         }
     } elsif (-d $file && ($recurse || grep { $file eq $_ } @ORG_ARGV)) { # Always process dirs given on command-line
         $file =~ s/^(.+)\/$/$1/; # Strip trailing /

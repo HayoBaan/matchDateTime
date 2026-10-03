@@ -5,7 +5,7 @@ to.
 
 # VERSION
 
-version 0.015
+version 0.016
 
 # DESCRIPTION
 
@@ -36,25 +36,32 @@ than 1/256^20 (1/256^10 for MTS/M2TS files).
 
 # SYNOPSIS
 
-    matchDateTime [-recurse] [-overwrite] [-modtime] [-utc] [-tz TZ [-dst]] <Files>
+    matchDateTime --help|-h
+
+    matchDateTime [--recurse] [--overwrite] [--modtime] [--utc] [--tz TZ [--dst]] <Files>
 
 # OPTIONS
 
 The following options are available.
 
-Note: option names can be abbreviated so e.g. `-r` or `-rec` can be used
-instead of the full option name `-recurse`.
+Long options also work with a single dash (e.g. `-recurse`). Option names can
+be abbreviated, so e.g. `-r` or `--rec` can be used instead of the full option
+name `--recurse`.
 
-- -recurse
+- --help, -h
+
+    Show this help.
+
+- --recurse
 
     Recurse directories. This will have matchDateTime process **all** files in those
     directories, so use with care!
 
-- -overwrite
+- --overwrite
 
     Overwrites the original file instead of renaming it to `_original`.
 
-- -modtime
+- --modtime
 
     Instructs matchDateTime to use the file modification time instead of the
     QuickTime CreateDate.
@@ -62,7 +69,7 @@ instead of the full option name `-recurse`.
     Note: This option is always in effect when matching the date times of MTS and
     M2TS files.
 
-- -utc
+- --utc
 
     Indicates that QuickTime times are in UTC. This will convert the QuickTime time
     back to the local time, so any updates to e.g. the maker notes DateTimeOriginal
@@ -72,21 +79,21 @@ instead of the full option name `-recurse`.
     local timezone, you should (temporarily) set the timezone to the timezone at
     the location of the recording. In Unix or on a Mac, this can be done by setting
     the TZ variable for the duration of the `matchDateTime` command like so:
-    `TZ="America/New_York" matchDateTime -utc FILE`.
+    `TZ="America/New_York" matchDateTime --utc FILE`.
 
-- -tz _TZ_
+- --tz _TZ_
 
     Use _TZ_ as the new time zone. Specify the time zone in hours. Fractional
     hours are supported (e.g. specify +09:30 as 9.5).
 
-    Note: for MTS/M2TS files, only half our precision is supported.
+    Note: for MTS/M2TS files, only half hour precision is supported.
 
-- -dst
+- --dst
 
     Indicates the daylight savings flag should be set when writing the new timezone
-    information (only used when the `-tz` option is also specified).
+    information (only used when the `--tz` option is also specified).
 
-    Note: only applicaple to MTS and MTS2 files.
+    Note: only applicable to MTS and M2TS files.
 
 # PREREQUISITES
 
