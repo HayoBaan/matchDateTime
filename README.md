@@ -5,7 +5,7 @@ to.
 
 # VERSION
 
-version 0.016
+version 0.017
 
 # DESCRIPTION
 
@@ -110,11 +110,11 @@ perl command (e.g., `.PL`).
 
 # AUTHOR
 
-Hayo Baan <info@hayobaan.com>
+Hayo Baan (it at hayobaan.nl)
 
 # COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2016 by Hayo Baan.
+This software is copyright (c) 2016–2026 by Hayo Baan.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
