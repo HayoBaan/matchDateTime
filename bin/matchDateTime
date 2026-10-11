@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 
-our $VERSION = '0.017';
+our $VERSION = '0.018';
 
 =encoding UTF-8
 
@@ -13,7 +13,7 @@ to.
 
 =head1 VERSION
 
-version 0.017
+version 0.018
 
 =head1 DESCRIPTION
 
@@ -46,6 +46,8 @@ than 1/256^20 (1/256^10 for MTS/M2TS files).
 
   matchDateTime --help|-h
 
+  matchDateTime --version
+
   matchDateTime [--recurse] [--overwrite] [--modtime] [--utc] [--tz TZ [--dst]] <Files>
 
 =head1 OPTIONS
@@ -61,6 +63,10 @@ name C<--recurse>.
 =item --help, -h
 
 Show this help.
+
+=item --version
+
+Show the version.
 
 =item --recurse
 
@@ -133,13 +139,15 @@ the same terms as the Perl 5 programming language system itself.
 
 =cut
 
+use File::Basename;
 use Getopt::Long;
 use Pod::Usage;
 
 # Options
-my ($help, $recurse, $overwrite, $mod_time, $utc, $tz, $dst);
+my ($help, $show_version, $recurse, $overwrite, $mod_time, $utc, $tz, $dst);
 GetOptions(
     'help|h'    => \$help,
+    'version'   => \$show_version,
     'recurse'   => \$recurse,
     'overwrite' => \$overwrite,
     'modtime'   => \$mod_time,
@@ -148,6 +156,10 @@ GetOptions(
     'dst'       => \$dst,
 ) or pod2usage(-exitstatus => 1, -verbose => 0);
 pod2usage(-exitstatus => 0, -verbose => 2) if $help;
+if ($show_version) {
+    print basename($0), " $VERSION\n";
+    exit 0;
+}
 pod2usage(-exitstatus => 1, -verbose => 0) unless @ARGV;
 
 # Read file into given buffer (reference)

@@ -5,7 +5,7 @@ to.
 
 # VERSION
 
-version 0.017
+version 0.018
 
 # DESCRIPTION
 
@@ -38,6 +38,8 @@ than 1/256^20 (1/256^10 for MTS/M2TS files).
 
     matchDateTime --help|-h
 
+    matchDateTime --version
+
     matchDateTime [--recurse] [--overwrite] [--modtime] [--utc] [--tz TZ [--dst]] <Files>
 
 # OPTIONS
@@ -51,6 +53,10 @@ name `--recurse`.
 - --help, -h
 
     Show this help.
+
+- --version
+
+    Show the version.
 
 - --recurse
 
