@@ -2,18 +2,18 @@
 use strict;
 use warnings;
 
-our $VERSION = '0.018';
+our $VERSION = '0.019';
 
 =encoding UTF-8
 
 =head1 NAME
 
-matchDateTime -- matches date/time info in movie files where ExifTool is unable
+matchDateTime - matches date/time info in movie files where ExifTool is unable
 to.
 
 =head1 VERSION
 
-version 0.018
+version 0.019
 
 =head1 DESCRIPTION
 
@@ -60,24 +60,24 @@ name C<--recurse>.
 
 =over 4
 
-=item --help, -h
+=item B<--help>, B<-h>
 
 Show this help.
 
-=item --version
+=item B<--version>
 
 Show the version.
 
-=item --recurse
+=item B<--recurse>
 
 Recurse directories. This will have matchDateTime process B<all> files in those
 directories, so use with care!
 
-=item --overwrite
+=item B<--overwrite>
 
 Overwrites the original file instead of renaming it to C<_original>.
 
-=item --modtime
+=item B<--modtime>
 
 Instructs matchDateTime to use the file modification time instead of the
 QuickTime CreateDate.
@@ -85,7 +85,7 @@ QuickTime CreateDate.
 Note: This option is always in effect when matching the date times of MTS and
 M2TS files.
 
-=item --utc
+=item B<--utc>
 
 Indicates that QuickTime times are in UTC. This will convert the QuickTime time
 back to the local time, so any updates to e.g. the maker notes DateTimeOriginal
@@ -97,14 +97,14 @@ the location of the recording. In Unix or on a Mac, this can be done by setting
 the TZ variable for the duration of the C<matchDateTime> command like so:
 C<TZ="America/New_York" matchDateTime --utc FILE>.
 
-=item --tz I<TZ>
+=item B<--tz> I<TZ>
 
 Use I<TZ> as the new time zone. Specify the time zone in hours. Fractional
 hours are supported (e.g. specify +09:30 as 9.5).
 
 Note: for MTS/M2TS files, only half hour precision is supported.
 
-=item --dst
+=item B<--dst>
 
 Indicates the daylight savings flag should be set when writing the new timezone
 information (only used when the C<--tz> option is also specified).
@@ -154,13 +154,13 @@ GetOptions(
     'utc'       => \$utc,
     'tz=f'      => \$tz,
     'dst'       => \$dst,
-) or pod2usage(-exitstatus => 1, -verbose => 0);
+) or pod2usage(-exitstatus => 1, -verbose => 1);
 pod2usage(-exitstatus => 0, -verbose => 2) if $help;
 if ($show_version) {
     print basename($0), " $VERSION\n";
     exit 0;
 }
-pod2usage(-exitstatus => 1, -verbose => 0) unless @ARGV;
+pod2usage(-exitstatus => 1, -verbose => 1) unless @ARGV;
 
 # Read file into given buffer (reference)
 sub read_file {
