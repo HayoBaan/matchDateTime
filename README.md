@@ -1,38 +1,36 @@
 # NAME
 
-matchDateTime - matches date/time info in movie files where ExifTool is unable
-to.
+matchDateTime - match the date/time info in movie files where ExifTool can't
 
 # VERSION
 
-version 0.019
+version 0.020
 
 # DESCRIPTION
 
-`matchDateTime` updates the date/time info in (movie) files where ExifTool is
-unable to.
+`matchDateTime` updates the date/time info in (movie) files where ExifTool is unable to.
 
-For "normal" movie files, the maker note DateTimeOriginal, XML LastUpdate, and
-XML CreationDateValue dates (and any other matching dates) are updated with the
-date as set in the QuickTime CreateDate tag.
+For "normal" movie files, these dates are updated with the date as set in the QuickTime CreateDate
+tag:
 
-MTS and M2TS movie files are handled differently, in that here we take the file
-modification date as the new target date and update all occurrences of the
-DateTimeOriginal with this. All sequential timestamps are updated as well.
+- the maker note DateTimeOriginal;
+- XML LastUpdate, and XML CreationDateValue;
+- any other matching dates.
 
-Important: No other date/time tags than as described will get updated. So if
-you want any other tags to change as well, you will need to additionally use
-`exiftool`.
+MTS and M2TS movie files are handled differently. For these, the file modification date is the new
+target date, and all occurrences of the DateTimeOriginal are updated with it. All sequential
+timestamps are updated as well.
 
-By default, the timezone information is left as was recorded by the camera, but
-you can change this by specifying a different timezone (and, for MTS and M2TS
-files, a different daylight savings flag).
+Important: No other date/time tags than as described will get updated. So if you want any other tags
+to change as well, you will need to additionally use `exiftool`.
 
-The tool works by replacing any sequence of bytes that exactly match the
-original value by the (correctly formatted) QuickTime CreateDate. Note that
-with this approach it is possible that actual movie data is changed as
-well. This, however, is extremely unlikely: the chance of this occuring is less
-than 1/256^20 (1/256^10 for MTS/M2TS files).
+By default, the timezone information is left as recorded by the camera. You can change it by
+specifying a different timezone, and for MTS and M2TS files, a different daylight saving flag.
+
+The tool works by replacing any sequence of bytes that exactly match the original value by the
+(correctly formatted) QuickTime CreateDate. Note that with this approach it is possible that actual
+movie data is changed as well. This, however, is extremely unlikely: the chance of this occuring is
+less than 1/256^20 (1/256^10 for MTS/M2TS files).
 
 # SYNOPSIS
 
@@ -46,9 +44,8 @@ than 1/256^20 (1/256^10 for MTS/M2TS files).
 
 The following options are available.
 
-Long options also work with a single dash (e.g. `-recurse`). Option names can
-be abbreviated, so e.g. `-r` or `--rec` can be used instead of the full option
-name `--recurse`.
+Long options also work with a single dash (e.g. `-recurse`). Option names can be abbreviated, so
+e.g. `-r` or `--rec` can be used instead of the full option name `--recurse`.
 
 - **--help**, **-h**
 
@@ -60,8 +57,8 @@ name `--recurse`.
 
 - **--recurse**
 
-    Recurse directories. This will have matchDateTime process **all** files in those
-    directories, so use with care!
+    Recurse directories. This will have matchDateTime process **all** files in those directories, so use
+    with care!
 
 - **--overwrite**
 
@@ -69,50 +66,44 @@ name `--recurse`.
 
 - **--modtime**
 
-    Instructs matchDateTime to use the file modification time instead of the
-    QuickTime CreateDate.
+    Instructs matchDateTime to use the file modification time instead of the QuickTime CreateDate.
 
-    Note: This option is always in effect when matching the date times of MTS and
-    M2TS files.
+    Note: This option is always in effect when matching the date times of MTS and M2TS files.
 
 - **--utc**
 
-    Indicates that QuickTime times are in UTC. This will convert the QuickTime time
-    back to the local time, so any updates to e.g. the maker notes DateTimeOriginal
-    will also be in this time.
+    Indicates that QuickTime times are in UTC. This will convert the QuickTime time back to the local
+    time, so any updates to e.g. the maker notes DateTimeOriginal will also be in this time.
 
-    With this option, if the file was recorded in a different timezone from your
-    local timezone, you should (temporarily) set the timezone to the timezone at
-    the location of the recording. In Unix or on a Mac, this can be done by setting
-    the TZ variable for the duration of the `matchDateTime` command like so:
-    `TZ="America/New_York" matchDateTime --utc FILE`.
+    With this option, a file recorded in a timezone other than your local one needs the timezone of the
+    place of recording, set temporarily. In Unix or on a Mac, this can be done by setting the TZ
+    variable for the duration of the `matchDateTime` command like so: `TZ="America/New_York"
+    matchDateTime --utc FILE`.
 
 - **--tz** _TZ_
 
-    Use _TZ_ as the new time zone. Specify the time zone in hours. Fractional
-    hours are supported (e.g. specify +09:30 as 9.5).
+    Use _TZ_ as the new time zone. Specify the time zone in hours. Fractional hours are supported (e.g.
+    specify +09:30 as 9.5).
 
     Note: for MTS/M2TS files, only half hour precision is supported.
 
 - **--dst**
 
-    Indicates the daylight savings flag should be set when writing the new timezone
-    information (only used when the `--tz` option is also specified).
+    Indicates the daylight savings flag should be set when writing the new timezone information (only
+    used when the `--tz` option is also specified).
 
     Note: only applicable to MTS and M2TS files.
 
 # PREREQUISITES
 
 matchDateTime requires both [Perl](https://www.perl.org/) and
-[ExifTool](http://www.sno.phy.queensu.ca/~phil/exiftool/) to be
-installed.
+[ExifTool](http://www.sno.phy.queensu.ca/~phil/exiftool/) to be installed.
 
 # INSTALLATION
 
-No installation is required, the script can be called directly. Optionally you
-can put the script in a directory on your path so it can be run from anywhere.
-On windows you may need to give the file an extension that is recognized as
-perl command (e.g., `.PL`).
+No installation is required, the script can be called directly. Optionally you can put the script in
+a directory on your path so it can be run from anywhere. On windows you may need to give the file an
+extension that is recognized as perl command (e.g., `.PL`).
 
 # AUTHOR
 
@@ -122,5 +113,5 @@ Hayo Baan (it at hayobaan.nl)
 
 This software is copyright (c) 2016–2026 by Hayo Baan.
 
-This is free software; you can redistribute it and/or modify it under
-the same terms as the Perl 5 programming language system itself.
+This is free software; you can redistribute it and/or modify it under the same terms as the Perl 5
+programming language system itself.
